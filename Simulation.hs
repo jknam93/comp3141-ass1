@@ -2,9 +2,11 @@ module Simulation (moveParticle, accelerate, advanceWorld) where
   
 import World
 import Physics
+import Test.QuickCheck
 
 -- Move a particle according to its velocity for the given number of (simulated) seconds.
 --
+
 moveParticle :: Float -> Particle -> Particle
 moveParticle t (Particle m (x, y) v@(vx, vy)) = Particle m (x + x', y + y') v
    where
@@ -23,23 +25,15 @@ accelerate t ps = map (update t ps) ps
             (ax, ay) = sumForce t ps this
       sumForce:: Float -> [Particle] -> Particle -> Accel
       sumForce _ [] _ = (0.0, 0.0)
-      sumForce t (p:ps) this = (ax' + xSum, ay' + ySum)
+      sumForce t (p:ps) targetParticle = (ax' + xSum, ay' + ySum)
          where
-            (ax', ay') = force this p
-            (xSum, ySum) = sumForce t ps this
-      
-   
+            (ax', ay') = force targetParticle p
+            (xSum, ySum) = sumForce t ps targetParticle
 --
 advanceWorld :: unused -> Float -> World -> World
+advanceWorld _ s w@(World lScale mScale tScale []) = w
 advanceWorld _ s (World lScale mScale tScale ps) = World lScale mScale tScale newPositions
    where
       t = s / tScale
-      newPositions = map (moveParticle t) ps
-
-prop_EnergyConservation:: World -> Float -> Bool
-prop_EnergyConservation  w _ =  abs (realToFrac energyDifference) < epsilon
-   where
-      energyDifference = (worldEnergy (advanceWorld 1 0.001 w)) - (worldEnergy w)
-      
-
-
+      newVelocities = accelerate t ps
+      newPositions = map (moveParticle t) newVelocities
